@@ -143,14 +143,100 @@ struct ToInt<Zero> {
 
 }; // struct ToInt<Zero>;
 
+/* -----------------------------------------------------*/
+
+/* Lists */
+struct Nil { };
+
+template<typename Data, typename Tail>
+struct Cons {
+	typedef Data data;
+	typedef Tail tail;
+
+}; // struct Cons;
+
+/* Fold */
+template<typename List, template<typename, typename> class Func, typename Acc>
+struct Fold {
+	typedef typename Fold<typename List::tail, Func, typename Func<Acc, typename List::data>::result>::result result;
+
+}; // struct Fold;
+
+template<template<typename, typename> class Func, typename Acc>
+struct Fold<Nil, Func, Acc> {
+	typedef Acc result;
+
+}; // struct Fold<Nil, Func, Acc>;
+
+template<typename List>
+using Sum = Fold<List, Add, Zero>;
+
+/* Map */
+template<typename List, template<typename> class Func>
+struct Map {
+	typedef Cons<typename Func<typename List::data>::result, typename Map<typename List::tail, Func>::result> result;
+
+}; // struct Map;
+
+template<template<typename> class Func>
+struct Map<Nil, Func> {
+	typedef Nil result;
+
+}; // struct Map<Nil, Func>;
+
+template<typename N>
+using Double = Add<Succ<Succ<Zero>>, N>;
+
+template<typename List>
+using DoubleList = Map<List, Double>;
+
+/* Filter */
+template<typename List, template<typename> class Func>
+struct Filter;
+
+template<typename List, template<typename> class Func, bool matches>
+struct FilterCheck { };
+
+template<typename List, template<typename> class Func>
+struct FilterCheck<List, Func, true> {
+	typedef Cons<typename List::data, typename Filter<typename List::tail, Func>::result> result;
+
+}; // struct FilterCheck<List, Func, true>;
+
+template<typename List, template<typename> class Func>
+struct FilterCheck<List, Func, false> {
+	typedef typename Filter<typename List::tail, Func>::result result;
+
+}; // struct FilterCheck<List, Func, false>;
+
+template<typename List, template<typename> class Func>
+struct Filter {
+	typedef typename FilterCheck<List, Func, Func<typename List::data>::value>::result result;
+
+}; // struct Filter;
+
+template<template<typename> class Func>
+struct Filter<Nil, Func> {
+	typedef Nil result;
+
+}; // struct Filter<Nil, Func>;
+
+template<typename N>
+using Eq2 = Eq<Succ<Succ<Zero>>, N>;
+
+template<typename List>
+using ListEq2 = Filter<List, Eq2>;
+
 int main(int argc, char* argv[]) {
 	std::cout << ToInt<Zero>::value << std::endl;
 	std::cout << ToInt<Succ<Succ<Succ<Succ<Succ<Zero>>>>>>::value << std::endl;
 	std::cout << std::endl;
+
 	std::cout << "1 == 2? " << Eq<Succ<Zero>, Succ<Succ<Zero>>>::value << std::endl;
 	std::cout << "2 == 2? " << Eq<Succ<Succ<Zero>>, Succ<Succ<Zero>>>::value << std::endl;
 	std::cout << "2 == 1? " << Eq<Succ<Succ<Zero>>, Succ<Zero>>::value << std::endl;
 	std::cout << std::endl;
+
 	std::cout << "2 + 3 = " << ToInt<Add<Succ<Succ<Zero>>, Succ<Succ<Succ<Zero>>>>::result>::value << std::endl;
 	std::cout << "3 * 4 = " << ToInt<Mult<Succ<Succ<Succ<Zero>>>, Succ<Succ<Succ<Succ<Zero>>>>>::result>::value << std::endl;
 	std::cout << "5 - 2 = " << ToInt<Sub<Succ<Succ<Succ<Succ<Succ<Zero>>>>>, Succ<Succ<Zero>>>::result>::value << std::endl;
@@ -160,8 +246,13 @@ int main(int argc, char* argv[]) {
 	std::cout << "5 / 2 = " << ToInt<Div<Succ<Succ<Succ<Succ<Succ<Zero>>>>>, Succ<Succ<Zero>>>::result>::value << " rem "
 								<< ToInt<Div<Succ<Succ<Succ<Succ<Succ<Zero>>>>>, Succ<Succ<Zero>>>::rem>::value << std::endl;
 	std::cout << std::endl;
-	std::cout << "3 + 1 = " << ToInt<Func<Succ<Succ<Succ<Zero>>>, Succ<Zero>, Add>::result>::value << std::endl;
 
+	std::cout << "3 + 1 = " << ToInt<Func<Succ<Succ<Succ<Zero>>>, Succ<Zero>, Add>::result>::value << std::endl;
+	std::cout << std::endl;
+
+	std::cout << "Sum [1;2;3] = " << ToInt<Sum<Cons<Succ<Zero>, Cons<Succ<Succ<Zero>>, Cons<Succ<Succ<Succ<Zero>>>, Nil>>>>::result>::value << std::endl;
+	std::cout << "Sum Double [1;2;3] = " << ToInt<Sum<DoubleList<Cons<Succ<Zero>, Cons<Succ<Succ<Zero>>, Cons<Succ<Succ<Succ<Zero>>>, Nil>>>>::result>::result>::value << std::endl;
+	std::cout << "Sum (Filter Eq2) [1;2;2] = " << ToInt<Sum<ListEq2<Cons<Succ<Zero>, Cons<Succ<Succ<Zero>>, Cons<Succ<Succ<Zero>>, Nil>>>>::result>::result>::value << std::endl;
 
 	/* Causes compilation error :) */
 	//std::cout << "1 / 0 = " << ToInt<Div<Succ<Zero>, Zero>::result>::value << std::endl; 
