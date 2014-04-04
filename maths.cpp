@@ -40,6 +40,70 @@ struct Eq<Zero, M> {
 
 }; // struct Eq<Zero, M>;
 
+/* N <= M */
+template<typename N, typename M>
+struct Le {
+	static const bool value = Le<typename N::n, typename M::n>::value;
+
+}; // struct Le;
+
+template<>
+struct Le<Zero, Zero> {
+	static const bool value = true;
+
+}; // struct Le<Zero, Zero>;
+
+template<typename N>
+struct Le<N, Zero> {
+	static const bool value = false;
+
+}; // struct Le<N, Zero>;
+
+template<typename M>
+struct Le<Zero, M> {
+	static const bool value = true;
+
+}; // struct Le<Zero, M>;
+
+/* N >= M */
+template<typename N, typename M>
+struct Ge {
+	static const bool value = Ge<typename N::n, typename M::n>::value;
+
+}; // struct Ge;
+
+template<>
+struct Ge<Zero, Zero> {
+	static const bool value = true;
+
+}; // struct Ge<Zero, Zero>;
+
+template<typename N>
+struct Ge<N, Zero> {
+	static const bool value = true;
+
+}; // struct Ge<N, Zero>;
+
+template<typename M>
+struct Ge<Zero, M> {
+	static const bool value = false;
+
+}; // struct Ge<Zero, M>;
+
+/* N < M */
+template<typename N, typename M>
+struct Lt {
+	static const bool value = !Ge<N, M>::value;
+
+}; // struct Lt;
+
+/* N > M */
+template<typename N, typename M>
+struct Gt {
+	static const bool value = !Le<N, M>::value;
+
+}; // struct Gt;
+
 /* Addition (N + M) */
 template<typename N, typename M>
 struct Add {
@@ -227,6 +291,105 @@ using Eq2 = Eq<Succ<Succ<Zero>>, N>;
 template<typename List>
 using ListEq2 = Filter<List, Eq2>;
 
+/* Append */
+template<typename List1, typename List2>
+struct Append {
+	typedef Cons<typename List1::data, typename Append<typename List1::tail, List2>::result> result;
+
+}; // struct Append;
+
+template<typename List2>
+struct Append<Nil, List2> {
+	typedef List2 result;
+
+}; // struct Append<Nil, List2>;
+
+/* Pair */
+template<typename A, typename B>
+struct Pair {
+	typedef A first;
+	typedef B second;
+
+}; // struct Pair;
+
+/* Mergesort! (Why not) */
+
+template<typename List, typename P = Pair<Nil, Nil>>
+struct Split {
+	typedef typename Split<typename List::tail::tail, Pair<Cons<typename List::data, typename P::first>, Cons<typename List::tail::data, typename P::second>>>::result result; 
+
+}; // struct Split;
+
+template<typename P, typename D>
+struct Split<Cons<D, Nil>, P> {
+	typedef Pair<Cons<D, typename P::first>, typename P::second> result;
+
+}; // struct Split<Cons<D, Nil>, P>;
+
+template<typename P>
+struct Split<Nil, P> {
+	typedef P result;
+
+}; // struct Split<Nil, P>;
+
+template<typename List1, typename List2, template<typename, typename> class Func>
+struct Merge;
+
+template<typename List1, typename List2, template<typename, typename> class Func, bool match>
+struct MergeCheck { };
+
+template<typename List1, typename List2, template<typename, typename> class Func>
+struct MergeCheck<List1, List2, Func, true> {
+	typedef Cons<typename List1::data, typename Merge<typename List1::tail, List2, Func>::result> result;
+
+}; // struct MergeCheck<List1, List2, Func, true>;
+
+template<typename List1, typename List2, template<typename, typename> class Func>
+struct MergeCheck<List1, List2, Func, false> {
+	typedef Cons<typename List2::data, typename Merge<List1, typename List2::tail, Func>::result> result;
+
+}; // struct MergeCheck<List1, List2, Func, true>;
+
+template<typename List1, typename List2, template<typename, typename> class Func>
+struct Merge {
+	typedef typename MergeCheck<List1, List2, Func, Func<typename List1::data, typename List2::data>::value>::result result;
+
+}; // struct Merge;
+
+template<typename List1, template<typename, typename> class Func>
+struct Merge<List1, Nil, Func> {
+	typedef List1 result;
+
+}; // struct Merge<List1, Nil, Func>;
+
+template<typename List2, template<typename, typename> class Func>
+struct Merge<Nil, List2, Func> {
+	typedef List2 result;
+
+}; // struct Merge<List1, Nil, Func>;
+
+template<template<typename, typename> class Func>
+struct Merge<Nil, Nil, Func> {
+	typedef Nil result;
+
+}; // struct Merge<List1, Nil, Func>;
+
+template<typename List, template<typename, typename> class Func>
+struct Mergesort {
+	typedef typename Merge<typename Mergesort<typename Split<List>::result::first, Func>::result, typename Mergesort<typename Split<List>::result::second, Func>::result, Func>::result result;
+
+}; // struct Mergesort;
+
+template<typename D, template<typename, typename> class Func>
+struct Mergesort<Cons<D, Nil>, Func> {
+    typedef Cons<D, Nil> result;
+};
+
+template<template<typename, typename> class Func>
+struct Mergesort<Nil, Func> {
+    typedef Nil result;
+};
+
 int main(int argc, char* argv[]) {
 	std::cout << ToInt<Zero>::value << std::endl;
 	std::cout << ToInt<Succ<Succ<Succ<Succ<Succ<Zero>>>>>>::value << std::endl;
@@ -253,6 +416,23 @@ int main(int argc, char* argv[]) {
 	std::cout << "Sum [1;2;3] = " << ToInt<Sum<Cons<Succ<Zero>, Cons<Succ<Succ<Zero>>, Cons<Succ<Succ<Succ<Zero>>>, Nil>>>>::result>::value << std::endl;
 	std::cout << "Sum Double [1;2;3] = " << ToInt<Sum<DoubleList<Cons<Succ<Zero>, Cons<Succ<Succ<Zero>>, Cons<Succ<Succ<Succ<Zero>>>, Nil>>>>::result>::result>::value << std::endl;
 	std::cout << "Sum (Filter Eq2) [1;2;2] = " << ToInt<Sum<ListEq2<Cons<Succ<Zero>, Cons<Succ<Succ<Zero>>, Cons<Succ<Succ<Zero>>, Nil>>>>::result>::result>::value << std::endl;
+	std::cout << "Sum [1;2]++[2;3] = " << ToInt<Sum<Append<Cons<Succ<Zero>, Cons<Succ<Succ<Zero>>, Nil>>, Cons<Succ<Succ<Zero>>, Cons<Succ<Succ<Succ<Zero>>>, Nil>>>::result>::result>::value << std::endl;
+	std::cout << std::endl;
+
+    #define ListTest Cons<Succ<Succ<Zero>>, Cons<Succ<Succ<Succ<Zero>>>, Cons<Succ<Zero>, Nil>>>
+    std::cout << ToInt<Split<ListTest>::result::first::data>::value << " " << ToInt<Split<ListTest>::result::first::tail::data>::value << std::endl;
+    std::cout << ToInt<Split<ListTest>::result::second::data>::value << std::endl;
+	std::cout << std::endl;
+
+	std::cout << ToInt<Mergesort<ListTest, Le>::result::data>::value << std::endl;
+	std::cout << ToInt<Mergesort<ListTest, Le>::result::tail::data>::value << std::endl;
+	std::cout << ToInt<Mergesort<ListTest, Le>::result::tail::tail::data>::value << std::endl;
+	std::cout << std::endl;
+
+	std::cout << ToInt<Mergesort<ListTest, Gt>::result::data>::value << std::endl;
+	std::cout << ToInt<Mergesort<ListTest, Gt>::result::tail::data>::value << std::endl;
+	std::cout << ToInt<Mergesort<ListTest, Gt>::result::tail::tail::data>::value << std::endl;
+	std::cout << std::endl;
 
 	/* Causes compilation error :) */
 	//std::cout << "1 / 0 = " << ToInt<Div<Succ<Zero>, Zero>::result>::value << std::endl; 
